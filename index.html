@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Collage Builder</title>
+  <style>
+    :root{
+      --bg:#0a0d12;
+      --panel:#12161d;
+      --line:#222832;
+      --text:#eef1f6;
+      --sub:#8a93a3;
+      --accent:#5b8cff;
+      --accent2:#7c5bff;
+      --good:#34d399;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+      background:var(--bg); color:var(--text);
+      -webkit-tap-highlight-color:transparent;
+    }
+    .wrap{max-width:640px;margin:0 auto;padding:16px 16px 32px;}
+
+    .title{display:flex;align-items:baseline;gap:10px;margin:6px 4px 18px;}
+    .title h1{font-size:20px;margin:0;font-weight:700;letter-spacing:-0.01em;}
+    .title span{font-size:12px;color:var(--sub);}
+
+    .card{
+      background:var(--panel); border:1px solid var(--line); border-radius:16px;
+      padding:16px; margin-bottom:14px;
+    }
+    .card h2{
+      font-size:12px; text-transform:uppercase; letter-spacing:.06em;
+      color:var(--sub); margin:0 0 12px; font-weight:600;
+    }
+
+    .dropzone{
+      border:1.5px dashed var(--line); border-radius:14px; padding:22px 14px;
+      text-align:center; position:relative; transition:border-color .15s, background .15s;
+    }
+    .dropzone.active{ border-color:var(--accent); background:rgba(91,140,255,0.06); }
+    .dropzone input[type=file]{
+      position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
+    }
+    .dz-icon{font-size:26px; margin-bottom:6px; line-height:1;}
+    .dz-main{font-size:14px; font-weight:600;}
+    .dz-sub{font-size:12px; color:var(--sub); margin-top:4px;}
+
+    .thumbs{
+      display:flex; gap:8px; overflow-x:auto; margin-top:14px; padding-bottom:2px;
+      -webkit-overflow-scrolling:touch;
+    }
+    .thumb{
+      position:relative; flex:0 0 auto; width:60px; height:60px; border-radius:14px;
+      overflow:hidden; border:1px solid var(--line); background:#000;
+    }
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+    .thumb .rm{
+      position:absolute; top:2px; right:2px; width:18px; height:18px; border-radius:50%;
+      background:rgba(10,13,18,0.85); color:#fff; font-size:11px; line-height:18px;
+      text-align:center; border:none; padding:0;
+    }
+    .thumb .num{
+      position:absolute; bottom:2px; left:3px; font-size:9px; color:#fff;
+      background:rgba(0,0,0,0.5); padding:1px 4px; border-radius:6px;
+    }
+
+    .style-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+    .style-opt{
+      border:1.5px solid var(--line); border-radius:12px; padding:10px 6px;
+      text-align:center; background:#0d1117; cursor:pointer; user-select:none;
+    }
+    .style-opt.sel{ border-color:var(--accent); background:rgba(91,140,255,0.08); }
+    .style-opt .icon{font-size:18px; line-height:1; margin-bottom:5px;}
+    .style-opt .lbl{font-size:11px; font-weight:600;}
+
+    .row{display:flex; gap:10px; align-items:center;}
+    .seg{
+      display:flex; background:#0d1117; border:1px solid var(--line); border-radius:12px;
+      padding:3px; gap:3px; flex:1;
+    }
+    .seg button{
+      flex:1; background:transparent; border:none; color:var(--sub); font-size:12px;
+      font-weight:600; padding:9px 4px; border-radius:9px; cursor:pointer;
+    }
+    .seg button.sel{ background:var(--accent); color:#fff; }
+
+    .btn{
+      background:var(--accent); color:#fff; border:none; border-radius:14px;
+      padding:14px 16px; font-weight:700; font-size:15px; cursor:pointer; flex:1;
+      transition:opacity .15s, transform .1s;
+    }
+    .btn:active{ transform:scale(0.98); }
+    .btn.secondary{ background:#1a2030; border:1px solid var(--line); color:var(--text); }
+    .btn.full{width:100%;}
+    .btn:disabled{ opacity:0.4; pointer-events:none; }
+
+    .preview{ padding:14px; }
+    .preview h2{margin-bottom:10px;}
+    .canvas-wrap{
+      border-radius:16px; overflow:hidden; border:1px solid var(--line);
+      background:#000; display:flex; align-items:center; justify-content:center;
+    }
+    canvas{ width:100%; height:auto; display:block; }
+
+    .status{
+      font-size:12.5px; color:var(--sub); margin-top:10px; text-align:center;
+      min-height:16px;
+    }
+    .status.ok{ color:var(--good); }
+
+    .actions{ display:flex; gap:10px; margin-top:14px; }
+
+    .gap{height:12px;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">
+      <h1>Collage Builder</h1>
+      <span>iOS-style icon grid · made for sharing</span>
+    </div>
+
+    <div class="card">
+      <h2>1 · Add photos</h2>
+      <div class="dropzone" id="dropzone">
+        <input id="file" type="file" accept="image/*" multiple />
+        <div class="dz-icon">📷</div>
+        <div class="dz-main">Tap to choose photos</div>
+        <div class="dz-sub">4–16 images work best · no repeats</div>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="status" id="uploadStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>2 · Pick a layout</h2>
+      <div class="style-grid" id="styleGrid">
+        <div class="style-opt sel" data-style="grid"><div class="icon">▦</div><div class="lbl">Icon Grid</div></div>
+        <div class="style-opt" data-style="masonry"><div class="icon">▥</div><div class="lbl">Masonry</div></div>
+        <div class="style-opt" data-style="hero"><div class="icon">◰</div><div class="lbl">Hero</div></div>
+        <div class="style-opt" data-style="filmstrip"><div class="icon">▤</div><div class="lbl">Filmstrip</div></div>
+        <div class="style-opt" data-style="stack"><div class="icon">▨</div><div class="lbl">Stacked</div></div>
+        <div class="style-opt" data-style="split"><div class="icon">◫</div><div class="lbl">Split</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3 · Shape &amp; size</h2>
+      <div class="row">
+        <div class="seg" id="shapeSeg">
+          <button class="sel" data-shape="squircle">Rounded</button>
+          <button data-shape="square">Square</button>
+          <button data-shape="circle">Circle</button>
+        </div>
+      </div>
+      <div class="gap"></div>
+      <div class="row">
+        <div class="seg" id="sizeSeg">
+          <button class="sel" data-size="1080x1920">Story</button>
+          <button data-size="1080x1080">Square</button>
+          <button data-size="1080x1350">Post</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="renderBtn" class="btn full" disabled>Render collage</button>
+    </div>
+
+    <div class="card preview" id="previewCard" style="display:none;">
+      <h2>Preview</h2>
+      <div class="canvas-wrap">
+        <canvas id="outCanvas"></canvas>
+      </div>
+      <div class="actions">
+        <button id="downloadBtn" class="btn secondary full">Save to photos</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const TILE_SRC = 900; // working resolution per source tile (square, cropped)
+
+  const fileInput = document.getElementById('file');
+  const dropzone = document.getElementById('dropzone');
+  const thumbsEl = document.getElementById('thumbs');
+  const styleGrid = document.getElementById('styleGrid');
+  const shapeSeg = document.getElementById('shapeSeg');
+  const sizeSeg = document.getElementById('sizeSeg');
+  const renderBtn = document.getElementById('renderBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const statusEl = document.getElementById('status');
+  const uploadStatusEl = document.getElementById('uploadStatus');
+  const previewCard = document.getElementById('previewCard');
+  const canvas = document.getElementById('outCanvas');
+  const ctx = canvas.getContext('2d');
+
+  let sources = [];   // { file, url, img }
+  let tiles = [];      // square-cropped canvases, one per source, fixed size
+  let style = 'grid';
+  let shape = 'squircle';
+  let outSize = '1080x1920';
+
+  function setStatus(msg, ok){
+    statusEl.textContent = msg || '';
+    statusEl.classList.toggle('ok', !!ok);
+  }
+
+  function setUploadStatus(msg, ok){
+    uploadStatusEl.textContent = msg || '';
+    uploadStatusEl.classList.toggle('ok', !!ok);
+  }
+
+  function fileKey(f){ return f.name + '_' + f.size + '_' + f.lastModified; }
+
+  // ---------- thumbnails / selection ----------
+  function renderThumbs(){
+    thumbsEl.innerHTML = '';
+    sources.forEach((s, i) => {
+      const d = document.createElement('div');
+      d.className = 'thumb';
+      d.innerHTML = `<img src="${s.url}"><span class="num">${i+1}</span><button class="rm" data-i="${i}">✕</button>`;
+      thumbsEl.appendChild(d);
+    });
+  }
+
+  thumbsEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.rm');
+    if (!btn) return;
+    const i = parseInt(btn.dataset.i, 10);
+    sources.splice(i, 1);
+    renderThumbs();
+    updateReadyState();
+  });
+
+  function updateReadyState(failCount, addedCount){
+    const ready = sources.length >= 1;
+    renderBtn.disabled = !ready;
+
+    if (failCount > 0 && addedCount > 0){
+      setUploadStatus(`${sources.length} photo${sources.length>1?'s':''} ready — ${failCount} couldn't be loaded (unsupported format)`, false);
+    } else if (failCount > 0 && addedCount === 0){
+      setUploadStatus(`Couldn't load ${failCount > 1 ? 'those photos' : 'that photo'} — try a different format (JPG or PNG works best)`, false);
+    } else if (ready){
+      setUploadStatus(`${sources.length} photo${sources.length>1?'s':''} ready`, true);
+    } else {
+      setUploadStatus('');
+    }
+  }
+
+  // ---------- loading ----------
+  function loadImageFromFile(file){
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      const timer = setTimeout(() => {
+        URL.revokeObjectURL(url);
+        reject(new Error('timeout'));
+      }, 8000); // a stuck/unsupported decode shouldn't hang forever with no feedback
+      img.onload = () => { clearTimeout(timer); resolve({ url, img }); };
+      img.onerror = () => { clearTimeout(timer); URL.revokeObjectURL(url); reject(new Error('decode failed')); };
+      img.src = url;
+    });
+  }
+
+  async function addFiles(fileList){
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    setUploadStatus(`Loading ${files.length} photo${files.length>1?'s':''}…`);
+    const existingKeys = new Set(sources.map(s => s.key));
+    let failCount = 0;
+    let addedCount = 0;
+    for (const f of files) {
+      const key = fileKey(f);
+      if (existingKeys.has(key)) continue; // de-dupe identical files
+      try {
+        const { url, img } = await loadImageFromFile(f);
+        sources.push({ file: f, url, img, key });
+        existingKeys.add(key);
+        addedCount++;
+      } catch(e) {
+        failCount++;
+      }
+    }
+    renderThumbs();
+    updateReadyState(failCount, addedCount);
+  }
+
+  fileInput.addEventListener('change', (e) => {
+    addFiles(e.target.files);
+    fileInput.value = '';
+  });
+
+  ['dragenter','dragover'].forEach(ev =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add('active'); })
+  );
+  ['dragleave','drop'].forEach(ev =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove('active'); })
+  );
+  dropzone.addEventListener('drop', (e) => {
+    if (e.dataTransfer && e.dataTransfer.files) addFiles(e.dataTransfer.files);
+  });
+
+  // ---------- style / shape / size pickers ----------
+  styleGrid.addEventListener('click', (e) => {
+    const opt = e.target.closest('.style-opt');
+    if (!opt) return;
+    styleGrid.querySelectorAll('.style-opt').forEach(o => o.classList.remove('sel'));
+    opt.classList.add('sel');
+    style = opt.dataset.style;
+  });
+
+  shapeSeg.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    shapeSeg.querySelectorAll('button').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    shape = b.dataset.shape;
+  });
+
+  sizeSeg.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    sizeSeg.querySelectorAll('button').forEach(x => x.classList.remove('sel'));
+    b.classList.add('sel');
+    outSize = b.dataset.size;
+  });
+
+  // ---------- square-crop every source to one fixed tile size ----------
+  function makeSquareTile(img){
+    const srcW = img.naturalWidth || img.width;
+    const srcH = img.naturalHeight || img.height;
+    const side = Math.min(srcW, srcH);
+    const sx = (srcW - side) / 2;
+    const sy = (srcH - side) / 2;
+
+    const t = document.createElement('canvas');
+    t.width = TILE_SRC; t.height = TILE_SRC;
+    const tctx = t.getContext('2d');
+    tctx.imageSmoothingEnabled = true;
+    tctx.imageSmoothingQuality = 'high';
+    tctx.drawImage(img, sx, sy, side, side, 0, 0, TILE_SRC, TILE_SRC);
+    return t;
+  }
+
+  // a rectangular crop (used for hero/filmstrip cells with non-square aspect)
+  function makeRectTile(img, aspectW, aspectH){
+    const srcW = img.naturalWidth || img.width;
+    const srcH = img.naturalHeight || img.height;
+    const targetAspect = aspectW / aspectH;
+    const srcAspect = srcW / srcH;
+    let sx=0, sy=0, sw=srcW, sh=srcH;
+    if (srcAspect > targetAspect){ sh = srcH; sw = sh*targetAspect; sx=(srcW-sw)/2; }
+    else { sw = srcW; sh = sw/targetAspect; sy=(srcH-sh)/2; }
+
+    const outW = 900, outH = Math.round(900 * aspectH/aspectW);
+    const t = document.createElement('canvas');
+    t.width = outW; t.height = outH;
+    const tctx = t.getContext('2d');
+    tctx.imageSmoothingEnabled = true;
+    tctx.imageSmoothingQuality = 'high';
+    tctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+    return t;
+  }
+
+  function buildTiles(){
+    tiles = sources.map(s => ({ square: makeSquareTile(s.img), img: s.img }));
+  }
+
+  // ---------- drawing helpers ----------
+  function clipPath(x,y,w,h,forceShape){
+    const useShape = forceShape || shape;
+    ctx.beginPath();
+    const aspect = w/h;
+    const nearSquare = aspect > 0.8 && aspect < 1.25;
+    if (useShape === 'circle' && nearSquare){
+      const r = Math.min(w,h)/2;
+      ctx.arc(x+w/2, y+h/2, r, 0, Math.PI*2);
+    } else {
+      // circle mode on a non-square cell (hero band, filmstrip, split column)
+      // would either clip into the cell with empty corners or get squashed —
+      // neither looks right, so those cells use squircle instead.
+      const r = useShape === 'square' ? 0 : Math.min(w,h) * 0.22;
+      const rr = Math.min(r, w/2, h/2);
+      ctx.moveTo(x+rr, y);
+      ctx.arcTo(x+w, y, x+w, y+h, rr);
+      ctx.arcTo(x+w, y+h, x, y+h, rr);
+      ctx.arcTo(x, y+h, x, y, rr);
+      ctx.arcTo(x, y, x+w, y, rr);
+    }
+    ctx.closePath();
+  }
+
+  function drawCell(srcCanvas, x, y, w, h, forceShape){
+    if (!srcCanvas || w<=0 || h<=0) return;
+    ctx.save();
+    clipPath(x,y,w,h,forceShape);
+    ctx.clip();
+    // cover-fit srcCanvas into w x h (srcCanvas is already square or pre-cropped to aspect)
+    const sw = srcCanvas.width, sh = srcCanvas.height;
+    const srcAspect = sw/sh, dstAspect = w/h;
+    let cx=0, cy=0, cw=sw, ch=sh;
+    if (srcAspect > dstAspect){ ch = sh; cw = ch*dstAspect; cx=(sw-cw)/2; }
+    else { cw = sw; ch = cw/dstAspect; cy=(sh-ch)/2; }
+    ctx.drawImage(srcCanvas, cx, cy, cw, ch, x, y, w, h);
+    ctx.restore();
+  }
+
+  function clearCanvas(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  function getOutputDims(){
+    const [w,h] = outSize.split('x').map(Number);
+    return {w,h};
+  }
+
+  // ---------- LAYOUT 1: true icon grid (uniform size, centered last row) ----------
+  function bestGridCols(n, canvasAspect){
+    // choose column count so the grid (with a possibly-short last row) is as
+    // close to filling the canvas aspect as possible, capped at 5 columns
+    let best = { cols: 1, score: Infinity };
+    for (let cols = 1; cols <= Math.min(5, n); cols++){
+      const rows = Math.ceil(n / cols);
+      const cellAspect = canvasAspect / (cols/rows); // rough heuristic
+      const score = Math.abs(Math.log(cellAspect)); // closeness to square cells
+      if (score < best.score) best = { cols, score };
+    }
+    return best.cols;
+  }
+
+  function renderIconGrid(W, H){
+    const n = tiles.length;
+    if (!n) return;
+    const margin = Math.round(W * 0.045);
+    const gap = Math.round(W * 0.025);
+
+    const cols = bestGridCols(n, W/H);
+    const rows = Math.ceil(n / cols);
+
+    const cellW = (W - margin*2 - gap*(cols-1)) / cols;
+    const cellH = (H - margin*2 - gap*(rows-1)) / rows;
+    const cell = Math.min(cellW, cellH); // uniform square icon size, never stretched
+
+    const gridW = cols*cell + gap*(cols-1);
+    const gridH = rows*cell + gap*(rows-1);
+    const startX = (W - gridW)/2;
+    const startY = (H - gridH)/2;
+
+    let idx = 0;
+    for (let r=0; r<rows; r++){
+      const itemsInRow = Math.min(cols, n - r*cols);
+      const rowW = itemsInRow*cell + gap*(itemsInRow-1);
+      const rowStartX = startX + (gridW - rowW)/2; // center a short last row, never stretch it
+      for (let c=0; c<itemsInRow; c++){
+        const x = rowStartX + c*(cell+gap);
+        const y = startY + r*(cell+gap);
+        drawCell(tiles[idx].square, x, y, cell, cell);
+        idx++;
+      }
+    }
+  }
+
+  // ---------- LAYOUT 2: masonry (real variable sizing, packed, no overlap) ----------
+  function renderMasonry(W, H){
+    const n = tiles.length;
+    if (!n) return;
+    const margin = Math.round(W*0.04);
+    const gap = Math.round(W*0.02);
+    const cols = n === 1 ? 1 : (n <= 5 ? 2 : 3);
+    const colW = (W - margin*2 - gap*(cols-1)) / cols;
+    const innerH = H - margin*2;
+
+    // Step 1: assign each tile to a column (shortest-column-first packing)
+    // using a provisional height, just to decide membership.
+    const colItems = Array.from({length: cols}, () => []);
+    const provHeights = new Array(cols).fill(0);
+    for (let i=0; i<n; i++){
+      let col = 0;
+      for (let c=1; c<cols; c++) if (provHeights[c] < provHeights[col]) col = c;
+      const big = (i % 5 === 0);
+      const h = big ? colW*1.5 : colW*(0.85 + (i%3)*0.18);
+      colItems[col].push(i);
+      provHeights[col] += h + gap;
+    }
+
+    // Step 2: within each column, scale that column's tile heights so they
+    // exactly fill innerH (no leftover gap, no overshoot), independent of
+    // how many tiles landed in other columns.
+    for (let col=0; col<cols; col++){
+      const items = colItems[col];
+      if (!items.length) continue;
+      const rawHeights = items.map(i => {
+        const big = (i % 5 === 0);
+        return big ? colW*1.5 : colW*(0.85 + (i%3)*0.18);
+      });
+      const totalGap = gap*(items.length-1);
+      const rawSum = rawHeights.reduce((a,b)=>a+b,0);
+      const scale = (innerH - totalGap) / rawSum;
+
+      let y = margin;
+      const x = margin + col*(colW+gap);
+      items.forEach((tileIdx, k) => {
+        const h = rawHeights[k]*scale;
+        drawCell(tiles[tileIdx].square, x, y, colW, h);
+        y += h + gap;
+      });
+    }
+  }
+
+  // ---------- LAYOUT 3: hero (one large feature tile + grid of the rest) ----------
+  function renderHero(W, H){
+    const n = tiles.length;
+    if (!n) return;
+    const margin = Math.round(W*0.045);
+    const gap = Math.round(W*0.025);
+
+    const heroShape = shape === 'circle' ? 'squircle' : shape;
+    if (n === 1){ drawCell(tiles[0].square, margin, margin, W-margin*2, H-margin*2, heroShape); return; }
+
+    const heroH = Math.round((H - margin*2) * 0.55);
+    const heroW = W - margin*2;
+    drawCell(tiles[0].square, margin, margin, heroW, heroH, heroShape);
+
+    const rest = tiles.slice(1);
+    const m = rest.length;
+    const cols = m <= 3 ? m : (m <= 8 ? 3 : 4);
+    const rows = Math.ceil(m/cols);
+    const areaY = margin + heroH + gap;
+    const areaH = H - margin - areaY;
+    const cellW = (W - margin*2 - gap*(cols-1))/cols;
+    const cellH = (areaH - gap*(rows-1))/rows;
+    const cell = Math.min(cellW, cellH);
+    const gridW = cols*cell + gap*(cols-1);
+    const startX = margin + (heroW - gridW)/2;
+
+    let idx=0;
+    for (let r=0;r<rows;r++){
+      const itemsInRow = Math.min(cols, m-r*cols);
+      const rowW = itemsInRow*cell + gap*(itemsInRow-1);
+      const rowStartX = startX + (gridW-rowW)/2;
+      for (let c=0;c<itemsInRow;c++){
+        const x = rowStartX + c*(cell+gap);
+        const y = areaY + r*(cell+gap);
+        drawCell(rest[idx].square, x, y, cell, cell);
+        idx++;
+      }
+    }
+  }
+
+  // ---------- LAYOUT 4: filmstrip (horizontal bands, full width, varying height ok) ----------
+  function renderFilmstrip(W, H){
+    const n = tiles.length;
+    if (!n) return;
+    const margin = Math.round(W*0.04);
+    const gap = Math.round(W*0.02);
+    const bandH = (H - margin*2 - gap*(n-1)) / n;
+    const maxBandH = H * 0.3;
+    const useH = Math.min(bandH, maxBandH);
+    const totalH = useH*n + gap*(n-1);
+    const startY = (H - totalH)/2;
+
+    for (let i=0;i<n;i++){
+      const y = startY + i*(useH+gap);
+      drawCell(tiles[i].square, margin, y, W-margin*2, useH);
+    }
+  }
+
+  // ---------- LAYOUT 5: stacked (overlapping fanned photos, like a pile) ----------
+  function renderStack(W, H){
+    const n = Math.min(tiles.length, 9); // fan looks best with a handful
+    if (!n) return;
+    const cardW = W*0.46, cardH = cardW;
+    const cx = W/2, cy = H/2;
+    const maxAngle = 36; // angular spread so every card peeks out
+    const spread = W * 0.17; // horizontal fan distance
+
+    for (let i=0;i<n;i++){
+      const arcT = n===1 ? 0 : (i/(n-1) - 0.5)*2; // -1..1
+      const angle = arcT*maxAngle*(Math.PI/180);
+      const px = cx + arcT * spread;
+      const py = cy; // every card centers on the same horizontal axis — no vertical drift
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.rotate(angle);
+      ctx.save();
+      clipPath(-cardW/2, -cardH/2, cardW, cardH);
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 28;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      ctx.clip();
+      const sc = tiles[i].square;
+      ctx.drawImage(sc, 0,0,sc.width,sc.height, -cardW/2,-cardH/2, cardW, cardH);
+      ctx.restore();
+      ctx.restore();
+    }
+  }
+
+  // ---------- LAYOUT 6: split (big vertical halves / asymmetric blocks) ----------
+  function renderSplit(W, H){
+    const n = tiles.length;
+    if (!n) return;
+    const margin = Math.round(W*0.045);
+    const gap = Math.round(W*0.025);
+    const innerW = W - margin*2, innerH = H - margin*2;
+
+    if (n === 1){ drawCell(tiles[0].square, margin, margin, innerW, innerH); return; }
+
+    if (n === 2){
+      const halfW = (innerW-gap)/2;
+      drawCell(tiles[0].square, margin, margin, halfW, innerH);
+      drawCell(tiles[1].square, margin+halfW+gap, margin, halfW, innerH);
+      return;
+    }
+
+    // left: one tall hero column; right: stacked grid of remaining
+    const leftW = innerW*0.46;
+    drawCell(tiles[0].square, margin, margin, leftW, innerH);
+
+    const rest = tiles.slice(1);
+    const m = rest.length;
+    const rightX = margin+leftW+gap;
+    const rightW = innerW-leftW-gap;
+    const cols = m<=3?1:2;
+    const rows = Math.ceil(m/cols);
+    const cellW = (rightW - gap*(cols-1))/cols;
+    const cellH = (innerH - gap*(rows-1))/rows;
+
+    let idx=0;
+    for (let r=0;r<rows;r++){
+      const itemsInRow = Math.min(cols, m-r*cols);
+      const rowW = itemsInRow*cellW + gap*(itemsInRow-1);
+      const rowStartX = rightX + (rightW-rowW)/2;
+      for (let c=0;c<itemsInRow;c++){
+        const x = rowStartX + c*(cellW+gap);
+        const y = margin + r*(cellH+gap);
+        drawCell(rest[idx].square, x, y, cellW, cellH);
+        idx++;
+      }
+    }
+  }
+
+  function renderByStyle(){
+    const {w,h} = getOutputDims();
+    canvas.width = w; canvas.height = h;
+    clearCanvas();
+    switch(style){
+      case 'grid': return renderIconGrid(w,h);
+      case 'masonry': return renderMasonry(w,h);
+      case 'hero': return renderHero(w,h);
+      case 'filmstrip': return renderFilmstrip(w,h);
+      case 'stack': return renderStack(w,h);
+      case 'split': return renderSplit(w,h);
+      default: return renderIconGrid(w,h);
+    }
+  }
+
+  renderBtn.addEventListener('click', async () => {
+    if (!sources.length) return;
+    setStatus('Rendering…');
+    await new Promise(r => setTimeout(r, 10));
+    buildTiles();
+    renderByStyle();
+    previewCard.style.display = '';
+    previewCard.scrollIntoView({ behavior:'smooth', block:'start' });
+    setStatus('Ready — tap Save to photos', true);
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    if (!canvas.width) return;
+    const link = document.createElement('a');
+    link.download = `collage_${style}_${canvas.width}x${canvas.height}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+})();
+</script>
+</body>
+</html>
